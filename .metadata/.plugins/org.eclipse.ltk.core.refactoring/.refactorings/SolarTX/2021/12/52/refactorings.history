@@ -1,3 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;SolarTX/NRF24L01_Test.elf.launch&apos; to &apos;SolarTX.elf.launch&apos;" description="Rename resource &apos;NRF24L01_Test.elf.launch&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="NRF24L01_Test.elf.launch" name="SolarTX.elf.launch" stamp="1640447228785" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;SolarTX/NRF24L01_Test.ioc&apos; to &apos;SolarTX.ioc&apos;" description="Rename resource &apos;NRF24L01_Test.ioc&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="NRF24L01_Test.ioc" name="SolarTX.ioc" stamp="1640447237762" updateReferences="true"/>
-</session>
