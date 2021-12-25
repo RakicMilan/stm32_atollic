@@ -145,12 +145,18 @@ int main(void)
 		{
 			HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 			NRF24GetData(&NRF24Ctx);
-			DEBUG("Received data:\r\n");
-			for(uint8_t i = 0; i < NRF24Ctx.PayloadSize; i++)
+
+			/*Task 1 second*/
+			if(Task1s)
 			{
-				DEBUG("%2X ",NRF24Ctx.RXData[i]);
+				Task1s = false;
+				DEBUG("Received data:\r\n");
+				for(uint8_t i = 0; i < NRF24Ctx.PayloadSize; i++)
+				{
+					DEBUG("%2X ",NRF24Ctx.RXData[i]);
+				}
+				DEBUG("\r\n");
 			}
-			DEBUG("\r\n");
 		}
 #endif
 	  /*Task 1 second*/
