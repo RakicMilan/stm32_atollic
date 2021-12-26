@@ -21,6 +21,11 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include <stdio.h>
+#include <string.h>
+#include <stdarg.h>
+#include "stm32f1xx_it.h"
+
 #include "gpio.h"
 #include "usart.h"
 #include "i2c.h"
@@ -57,7 +62,17 @@ static void MX_SPI1_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+void sendDebug(char* format,...)
+{
+	char sendBuf[128];
+	va_list args;
+	/* initialize valist for num number of arguments */
+	va_start(args, format);
+	vsnprintf(sendBuf,sizeof(sendBuf) - 1, format, args);
+	/* clean memory reserved for valist */
+	va_end(args);
+	USARTWriteBuffer(USART2,(uint8_t*)sendBuf,strlen(sendBuf));
+}
 /* USER CODE END 0 */
 
 /**
@@ -90,7 +105,13 @@ int main(void)
   MX_GPIO_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
+
+#ifdef USE_SPI1
   MX_SPI1_Init();
+#else
+  MX_SPI2_Init();
+#endif
+
   MX_USART2_UART_Init();
 
   /* USER CODE BEGIN 2 */
@@ -105,18 +126,18 @@ int main(void)
   /* USER CODE END 2 */
 
   /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
   while (1)
   {
-    /* USER CODE END WHILE */
 	SSD1306_ScrollRight(0x00, 0x0f);
 	HAL_Delay(2000);
 
+	DEBUG("Received data:\r\n");
+
 	SSD1306_ScrollLeft(0x00, 0x0f);
 	HAL_Delay(2000);
-    /* USER CODE BEGIN 3 */
+
+	DEBUG("Received data:\r\n");
   }
-  /* USER CODE END 3 */
 }
 
 /**
@@ -140,7 +161,7 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL9;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
   /** Initializes the CPU, AHB and APB buses clocks
   */
@@ -153,7 +174,7 @@ void SystemClock_Config(void)
 
   if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 }
 
@@ -180,7 +201,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CRCPolynomial = 10;
   if (HAL_SPI_Init(&hspi1) != HAL_OK)
   {
-    Error_Handler();
+    _Error_Handler(__FILE__, __LINE__);
   }
 
 }
@@ -191,14 +212,16 @@ static void MX_SPI1_Init(void)
 
 /**
   * @brief  This function is executed in case of error occurrence.
+  * @param  file: The file name as string.
+  * @param  line: The line in file as a number.
   * @retval None
   */
-void Error_Handler(void)
+void _Error_Handler(char *file, int line)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-  while (1)
+  while(1)
   {
   }
   /* USER CODE END Error_Handler_Debug */
