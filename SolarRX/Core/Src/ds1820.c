@@ -166,17 +166,12 @@ void GetTemperatureString(int16_t temperature, char *tempString) {
 void DisplayTemperatures(void) {
 	char tBoiler[] = "000";
 	char tWaterHeater[] = "000";
-	//char tCollector[] = "000";
+	char tCollector[] = "000";
 	GetTemperatureString(m_temperature[T_BOILER], tBoiler);
 	GetTemperatureString(m_temperature[T_WATER_HEATER], tWaterHeater);
 	//GetTemperatureString(m_tCollector.i, tCollector);
 
-	SSD1306_Clear();
-	SSD1306_GotoXY(0, 0);
-	SSD1306_Puts(tWaterHeater, &Font_11x18, 1);
-	SSD1306_UpdateScreen();
-
-	//ssd1306_PrintTemperatures(tBoiler, tWaterHeater, tCollector);
+	SSD1306_PrintTemperatures(tBoiler, tWaterHeater, tCollector);
 }
 
 void Debug_PrintTemperatures(void) {

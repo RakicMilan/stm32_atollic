@@ -21,6 +21,7 @@
    ----------------------------------------------------------------------
  */
 #include "ssd1306.h"
+#include "mainController.h"
 
 extern I2C_HandleTypeDef hi2c1;
 /* Write command */
@@ -56,6 +57,49 @@ static SSD1306_t SSD1306;
 #define SSD1306_NORMALDISPLAY       0xA6
 #define SSD1306_INVERTDISPLAY       0xA7
 
+
+// Print temperatures on LCD
+void SSD1306_PrintTemperatures(char *tBoiler, char *tWaterHeater, char *tCollector) {
+
+	SSD1306_Clear();
+
+	// Kotao
+	SSD1306_GotoXY(92, 0);
+	SSD1306_Puts("KOTAO", &Font_7x10, SSD1306_COLOR_WHITE);
+	SSD1306_GotoXY(92, 16);
+	SSD1306_Puts(tBoiler, &Font_11x18, SSD1306_COLOR_WHITE);
+	if (m_boilerPump) {
+		SSD1306_DrawFilledCircle(108, 48, 10, SSD1306_COLOR_WHITE);
+	} else {
+		SSD1306_DrawCircle(108, 48, 10, SSD1306_COLOR_WHITE);
+	}
+
+	// Bojler
+	SSD1306_GotoXY(44, 0);
+	SSD1306_Puts("BOJLER", &Font_7x10, SSD1306_COLOR_WHITE);
+	SSD1306_GotoXY(40, 24);
+	SSD1306_Puts(tWaterHeater, &Font_16x26, SSD1306_COLOR_WHITE);
+
+	// Kolektor
+	SSD1306_GotoXY(2, 0);
+	SSD1306_Puts("KOLEK", &Font_7x10, SSD1306_COLOR_WHITE);
+	SSD1306_GotoXY(2, 16);
+	/*if (nrf24Data.connected) {
+		SSD1306_Puts(tCollector, &Font_11x18, SSD1306_COLOR_WHITE);
+		if (TIMEOUT(nrf24Data.timeout, NRF24_TIMEOUT)) {
+			nrf24Data.connected = false;
+		}
+	} else*/ {
+		SSD1306_Puts(" --", &Font_11x18, SSD1306_COLOR_WHITE);
+	}
+	if (m_collectorPump) {
+		SSD1306_DrawFilledCircle(16, 48, 10, SSD1306_COLOR_WHITE);
+	} else {
+		SSD1306_DrawCircle(16, 48, 10, SSD1306_COLOR_WHITE);
+	}
+
+	SSD1306_UpdateScreen();
+}
 
 void SSD1306_ScrollRight(uint8_t start_row, uint8_t end_row)
 {
