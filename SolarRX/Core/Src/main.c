@@ -33,6 +33,7 @@
 #include "fonts.h"
 #include "ssd1306.h"
 #include "test.h"
+#include "ds1820.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,6 +49,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+uint8_t m_displayCounter;
+
 SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
@@ -55,6 +58,7 @@ SPI_HandleTypeDef hspi1;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void UpdateDisplay(void);
 static void MX_SPI1_Init(void);
 /* USER CODE BEGIN PFP */
 
@@ -114,6 +118,8 @@ int main(void)
 
   MX_USART2_UART_Init();
 
+  DS1820_Init();
+
   /* USER CODE BEGIN 2 */
   SSD1306_Init();
 
@@ -122,21 +128,55 @@ int main(void)
   SSD1306_GotoXY(10, 30);
   SSD1306_Puts("  WORLD :)", &Font_11x18, 1);
   SSD1306_UpdateScreen();
-  HAL_Delay(2000);
+  //HAL_Delay(2000);
   /* USER CODE END 2 */
+
+
+
+
+//  GPIO_InitTypeDef GPIO_InitStruct;
+//  GPIO_InitStruct.Pin = GPIO_PIN_9;
+//  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+//  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+//  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
 
   /* Infinite loop */
   while (1)
   {
-	SSD1306_ScrollRight(0x00, 0x0f);
-	HAL_Delay(2000);
 
-	DEBUG("Received data:\r\n");
 
-	SSD1306_ScrollLeft(0x00, 0x0f);
-	HAL_Delay(2000);
+//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET);
+//	  _DelayUS(10);
+//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
+//	  _DelayUS(100);
 
-	DEBUG("Received data:\r\n");
+
+	/*Task 10ms*/
+    if(Task10ms)
+    {
+      Task10ms = false;
+    }
+    /*Task 100ms*/
+    if(Task100ms)
+    {
+      Task100ms = false;
+
+      MeasureTemperatures();
+
+    }
+    /*Task 1 second*/
+    if(Task1s)
+    {
+      Task1s = false;
+
+      UpdateDisplay();
+
+//      SSD1306_ScrollRight(0x00, 0x0f);
+//      DEBUG("Test\r\n");
+//      SSD1306_ScrollLeft(0x00, 0x0f);
+//      DEBUG("Test\r\n");
+    }
   }
 }
 
@@ -176,6 +216,17 @@ void SystemClock_Config(void)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
+}
+
+void UpdateDisplay(void) {
+//	if (m_displayCounter < 3) {
+//		DisplayTime();
+//	} else {
+		DisplayTemperatures();
+//	}
+	m_displayCounter++;
+	if (m_displayCounter >= 6)
+		m_displayCounter = 0;
 }
 
 /**

@@ -26,24 +26,19 @@
 #endif
 
 /* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
+#include "stm32f1xx_hal.h"
+#include "main.h"
+#include <stdbool.h>
+#include <stdint.h>
 
 /* Exported types ------------------------------------------------------------*/
-/* USER CODE BEGIN ET */
-
-/* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
-/* USER CODE BEGIN EC */
-
-/* USER CODE END EC */
+ extern volatile bool Task10ms;
+ extern volatile bool Task100ms;
+ extern volatile bool Task1s;
 
 /* Exported macro ------------------------------------------------------------*/
-/* USER CODE BEGIN EM */
-
-/* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
 void NMI_Handler(void);

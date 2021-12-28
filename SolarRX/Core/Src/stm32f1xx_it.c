@@ -18,40 +18,14 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
 #include "stm32f1xx_it.h"
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN TD */
-
-/* USER CODE END TD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
-
-/* Private function prototypes -----------------------------------------------*/
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+uint32_t Cnt = 0;
+volatile bool Task10ms = false;
+volatile bool Task100ms = false;
+volatile bool Task1s = false;
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -182,13 +156,25 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
-  /* USER CODE BEGIN SysTick_IRQn 0 */
 
-  /* USER CODE END SysTick_IRQn 0 */
+  Cnt++;
+
+  if(!(Cnt % 10))
+  {
+    Task10ms = true;
+    if(!(Cnt % 100))
+    {
+      Task100ms = true;
+      if(!(Cnt % 1000))
+      {
+        Cnt = 0;
+        Task1s = true;
+      }
+    }
+  }
   HAL_IncTick();
-  /* USER CODE BEGIN SysTick_IRQn 1 */
+  HAL_SYSTICK_IRQHandler();
 
-  /* USER CODE END SysTick_IRQn 1 */
 }
 
 /******************************************************************************/

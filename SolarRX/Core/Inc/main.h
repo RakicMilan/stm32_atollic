@@ -30,27 +30,39 @@ extern "C" {
 #include "stm32f1xx_hal.h"
 
 /* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 #define DEBUG(...) do{\
 /*Clear woking buffer here*/\
 sendDebug(__VA_ARGS__);\
 }while(0);
-/* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
-/* USER CODE BEGIN ET */
 
-/* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
-/* USER CODE BEGIN EC */
 
-/* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
-/* USER CODE BEGIN EM */
+//color macros
+#define DebugMoveCursor(x,y){DEBUG("\033[2%d;%df",x,y);}
+#define DebugMoveCursorUp(x){DEBUG("\033[%dA",x);}
+#define DebugMoveCursorDw(x){printf("\033[%dB",x);}
+#define DebugSaveCursorPos(){DEBUG("\033[s");}
+#define DebugRecalCursorPos(){DEBUG("\033[u");}
 
-/* USER CODE END EM */
+#define DebugSetBold() {DEBUG("\033[1m");}
+#define DebugSetNormal() {DEBUG("\033[0m");}
+#define DebugSetBlink() {DEBUG("\033[5m");}
+#define DebugSetInverse() {DEBUG("\033[7m");}
+
+#define DebugClearScreen() {DEBUG("\033[2J");}
+#define DebugChangeColorToGREEN() {DEBUG("\033[0;32m");}
+#define DebugChangeColorToRED() {DEBUG("\033[0;31m");}
+#define DebugChangeColorToBLUE() {DEBUG("\033[0;34m"); }
+#define DebugChangeColorToYELLOW() {DEBUG("\033[0;33m");}
+#define DebugChangeColorToCYIAN() {DEBUG("\033[0;36m"); }
+#define DebugChangeColorToWHITE() {DEBUG("\033[0;37m"); }
+#define DebugChangeColorToPURPLE() {DEBUG("\033[0;35m");}
+#define DebugChangeBackColorToBLACK() {DEBUG("\033[40m");}
 
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
