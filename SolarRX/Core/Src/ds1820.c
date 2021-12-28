@@ -47,14 +47,14 @@ int16_t OW_ReadTemperature(TempSensor_t tempSensor) {
 	GPIO_TypeDef* ow_port;
 	uint16_t ow_pin;
 
-	union {
-		int16_t word;
-
-		struct {
-			uint8_t lsByte;
-			uint8_t msByte;
-		};
-	} temperature;
+//	union {
+//		int16_t word;
+//
+//		struct {
+//			uint8_t lsByte;
+//			uint8_t msByte;
+//		};
+//	} temperature;
 
 	switch (tempSensor) {
 	case T_BOILER:
@@ -68,34 +68,6 @@ int16_t OW_ReadTemperature(TempSensor_t tempSensor) {
 		break;
 	}
 
-	return (int16_t)get_temperature(ow_port, ow_pin);
-
-
-
-	//    uint8_t power;
-	//    power = OneWire_readPower();
-	//    OneWire_reset();
-	//    OneWire_writeByte(SKIP_ROM);
-	//    OneWire_writeByte(CONVERT_TEMPERATURE);
-	//    if (power == 0x01) {
-	//        // Vdd power: poll for conversion complete
-	//        // bit will be 1 when conversion is complete
-	//        while (OneWire_readBit() == 0);
-	//    } else {
-	//        // parasitic power: drive data high and wait conversion time
-	//        OW_LAT = 1; //Drive high
-	//        OW_TRIS = OUTPUT; //Set as output
-	//        __delay_ms(800); // wait 800 ms for conversion to complete
-	//    }
-	//    OneWire_reset();
-	//    OneWire_writeByte(SKIP_ROM);
-	//    OneWire_writeByte(READ_SCRATCHPAD);
-	//    temperature.lsByte = OneWire_readByte();
-	//    temperature.msByte = OneWire_readByte();
-	//    // stop data transfer
-	//    OneWire_reset();
-}
-//{
 //	OW_reset(ow_port, ow_pin);
 //	_DelayUS(375);
 //	OW_writeByte(ow_port, ow_pin, OW_CMD_SKIPROM);
@@ -114,14 +86,34 @@ int16_t OW_ReadTemperature(TempSensor_t tempSensor) {
 //	OW_reset(ow_port, ow_pin);
 //
 //	return (int16_t)((float) temperature.word / TEMP_RES);
-//}
+
+	uint8_t pad_data[] = {0,0,0,0,0,0,0,0,0}; //9 Byte
+	reset(ow_port, ow_pin);
+	write_byte(0xCC, ow_port, ow_pin); //Skip ROM [CCh]
+	write_byte(0x44, ow_port, ow_pin); //Convert Temperature [44h]
+	PIN_wait_for_1(20, ow_port, ow_pin);
+	reset(ow_port, ow_pin);
+	write_byte(0xCC, ow_port, ow_pin); //Skip ROM [CCh]
+	write_byte(0xBE, ow_port, ow_pin); //Read Scratchpad [BEh]
+	for (uint8_t i = 0; i < 9; i++)
+		pad_data[i] = read_byte(ow_port, ow_pin); //factor out 1/16 and remember 1/16 != 1/16.0
+	uint16_t x = (pad_data[1] << 8) + pad_data[0];
+	if ((pad_data[1] >> 7) == 1 )
+	{
+		x -= 1; x = ~x; return x / -16.0;
+	}
+	else
+	{
+		return x / 16.0;
+	}
+}
 
 /**
  * @brief  Determine device power source
  * @param tempSensor temperature sensor for measuring
  * @retval Zero returned if parasitic mode otherwise Vdd source
  */
-uint8_t OW_ReadPower(TempSensor_t tempSensor) {
+uint8_t read_power(TempSensor_t tempSensor) {
 	GPIO_TypeDef* ow_port;
 	uint16_t ow_pin;
 
@@ -137,10 +129,10 @@ uint8_t OW_ReadPower(TempSensor_t tempSensor) {
 		break;
 	}
 
-	OW_reset(ow_port, ow_pin);
-	OW_writeByte(ow_port, ow_pin, OW_CMD_SKIPROM);
-	OW_writeByte(ow_port, ow_pin, OW_READ_POWERSUPPLY);
-	return OW_readByte(ow_port, ow_pin);
+	reset(ow_port, ow_pin);
+	write_byte(OW_CMD_SKIPROM, ow_port, ow_pin);
+	write_byte(OW_READ_POWERSUPPLY, ow_port, ow_pin);
+	return read_byte(ow_port, ow_pin);
 }
 
 void MeasureTemperature(TempSensor_t tempSensor) {

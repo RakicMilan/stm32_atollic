@@ -38,12 +38,12 @@
 #define OW_READ_SCRATCHPAD			0xBE
 #define OW_READ_POWERSUPPLY			0xB4
 
-float get_temperature(GPIO_TypeDef *ow_port, uint16_t ow_pin);
+void write_byte(uint8_t data, GPIO_TypeDef *ow_port, uint16_t ow_pin);
+uint8_t read_byte(GPIO_TypeDef *ow_port, uint16_t ow_pin);
+void PIN_wait_for_1(uint32_t time, GPIO_TypeDef *ow_port, uint16_t ow_pin);
+void reset(GPIO_TypeDef *ow_port, uint16_t ow_pin);
 
-void _DelayUS(uint32_t us);
-int OW_reset(GPIO_TypeDef* ow_port, uint16_t ow_pin);
-void OW_writeByte(GPIO_TypeDef* ow_port, uint16_t ow_pin, int data);
-int OW_readByte(GPIO_TypeDef* ow_port, uint16_t ow_pin);
-
+void get_presence(GPIO_TypeDef *ow_port, uint16_t ow_pin);
+void get_ID(GPIO_TypeDef *ow_port, uint16_t ow_pin);
 
 #endif	/* __ONEWIRE_H */

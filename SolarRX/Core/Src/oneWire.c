@@ -15,12 +15,6 @@
 #include "main.h"
 
 
-void _DelayUS(uint32_t us)
-{
-  volatile uint32_t counter = 8*us;
-  while(counter--);
-}
-
 void delayus(uint32_t us)
 {
   volatile uint32_t counter = 8*us;
@@ -44,8 +38,7 @@ void write_byte(uint8_t data, GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 		write_bit(data >> i & 1, ow_port, ow_pin);
 }
 
-static void A9_as_INPUT(GPIO_TypeDef *ow_port, uint16_t ow_pin)
-{
+static void PIN_as_INPUT(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 	HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_SET);
 	GPIO_InitStruct.Pin = ow_pin;
@@ -54,8 +47,7 @@ static void A9_as_INPUT(GPIO_TypeDef *ow_port, uint16_t ow_pin)
 	HAL_GPIO_Init(ow_port, &GPIO_InitStruct);
 }
 
-static void A9_as_OUTPUT(GPIO_TypeDef *ow_port, uint16_t ow_pin)
-{
+static void PIN_as_OUTPUT(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 	GPIO_InitTypeDef GPIO_InitStruct = {0};
 	HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_SET);
 	GPIO_InitStruct.Pin = ow_pin;
@@ -68,10 +60,10 @@ static void A9_as_OUTPUT(GPIO_TypeDef *ow_port, uint16_t ow_pin)
 uint8_t read_bit(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 	uint8_t bit = 0;
 	LH_signal(1, 10, ow_port, ow_pin);
-	A9_as_INPUT(ow_port, ow_pin);
+	PIN_as_INPUT(ow_port, ow_pin);
 	bit = (HAL_GPIO_ReadPin(ow_port, ow_pin) ? 1 : 0);
 	delayus(40);
-	A9_as_OUTPUT(ow_port, ow_pin);
+	PIN_as_OUTPUT(ow_port, ow_pin);
 	return bit;
 }
 
@@ -82,11 +74,11 @@ uint8_t read_byte(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 	return data;
 }
 
-void A9_wait_for_1(uint32_t time, GPIO_TypeDef *ow_port, uint16_t ow_pin) {
-	A9_as_INPUT(ow_port, ow_pin);
+void PIN_wait_for_1(uint32_t time, GPIO_TypeDef *ow_port, uint16_t ow_pin) {
+	PIN_as_INPUT(ow_port, ow_pin);
 	delayus(time);
 	while(HAL_GPIO_ReadPin(ow_port, ow_pin) == 0);
-	A9_as_OUTPUT(ow_port, ow_pin);
+	PIN_as_OUTPUT(ow_port, ow_pin);
 }
 
 void reset(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
@@ -96,18 +88,18 @@ void reset(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 void get_presence(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 	uint8_t flag = 1;
 	LH_signal(500, 0, ow_port, ow_pin);
-	A9_as_INPUT(ow_port, ow_pin);
+	PIN_as_INPUT(ow_port, ow_pin);
 	delayus(60);//look for GND_LOW = DS18B20 exists, and set flag = 1
 	flag = (HAL_GPIO_ReadPin(ow_port, ow_pin) ? 0 : 1); //not ?1:0
-	A9_as_OUTPUT(ow_port, ow_pin);
+	PIN_as_OUTPUT(ow_port, ow_pin);
 	delayus(400);
 	if(flag)
 	{
-		DEBUG("DS18S20 present");
+		DEBUG("DS18B20 present");
 	}
 	else
 	{
-		DEBUG("DS18S20 not present");
+		DEBUG("DS18B20 not present");
 	}
 	HAL_Delay(1000);
 }
@@ -124,136 +116,5 @@ void get_ID(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
 		HAL_Delay(200);
 	}
 	DEBUG("\r\n");
-}
-
-float get_temperature(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
-	uint8_t pad_data[] = {0,0,0,0,0,0,0,0,0}; //9 Byte
-	reset(ow_port, ow_pin);
-	write_byte(0xCC, ow_port, ow_pin); //Skip ROM [CCh]
-	write_byte(0x44, ow_port, ow_pin); //Convert Temperature [44h]
-	A9_wait_for_1(20, ow_port, ow_pin);
-	reset(ow_port, ow_pin);
-	write_byte(0xCC, ow_port, ow_pin); //Skip ROM [CCh]
-	write_byte(0xBE, ow_port, ow_pin); //Read Scratchpad [BEh]
-	for (uint8_t i = 0; i < 9; i++)
-		pad_data[i] = read_byte(ow_port, ow_pin); //factor out 1/16 and remember 1/16 != 1/16.0
-	uint16_t x = (pad_data[1] << 8) + pad_data[0];
-	if ((pad_data[1] >> 7) == 1 )
-	{
-		x -= 1; x = ~x; return x / -16.0;
-	}
-	else
-	{
-		return x / 16.0;
-	}
-}
-
-
-
-
-/**
- * @brief  Generate a 1-Wire reset, return 1 if no presence detect was found, return 0 otherwise.
- *         (NOTE: Does not handle alarm presence from DS2404/DS1994)
- * @param  ow_port: GPIOx port, where x can be (A..G) to select the GPIO peripheral.
- * @param  ow_pin: specifies the port bits to be written.
- *   This parameter can be any combination of GPIO_Pin_x where x can be (0..15).
- * @retval 1 if no presence detect was found, 0 otherwise
- */
-int OW_reset(GPIO_TypeDef *ow_port, uint16_t ow_pin) {
-	GPIO_PinState pinState;
-
-	_DelayUS(DELAY_G);
-	HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_RESET); // Drives DQ low
-	_DelayUS(DELAY_H);
-	HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_SET); // Releases the bus
-	_DelayUS(DELAY_I);
-	pinState = HAL_GPIO_ReadPin(ow_port, ow_pin); // Sample for presence pulse from slave
-	_DelayUS(DELAY_J); // Complete the reset sequence recovery
-	return pinState; // Return sample presence pulse result
-}
-
-/**
- * @brief  Send a 1-Wire write bit. Provide 10us recovery time.
- * @param  ow_port: GPIOx port, where x can be (A..G) to select the GPIO peripheral.
- * @param  ow_pin: specifies the port bits to be written.
- *   This parameter can be any combination of GPIO_Pin_x where x can be (0..15).
- * @param  bit: bit for writing.
- * @retval None
- */
-void OW_writeBit(GPIO_TypeDef* ow_port, uint16_t ow_pin, int bit) {
-	if (bit) {
-		// Write '1' bit
-		HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_RESET); // Drives DQ low
-		_DelayUS(DELAY_A);
-		HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_SET); // Releases the bus
-		_DelayUS(DELAY_B); // Complete the time slot and 10us recovery
-	} else {
-		// Write '0' bit
-		HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_RESET); // Drives DQ low
-		_DelayUS(DELAY_C);
-		HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_SET); // Releases the bus
-		_DelayUS(DELAY_D);
-	}
-}
-
-/**
- * @brief  Read a bit from the 1-Wire bus and return it. Provide 10us recovery time.
- * @param  ow_port: GPIOx port, where x can be (A..G) to select the GPIO peripheral.
- * @param  ow_pin: specifies the port bits to be written.
- *   This parameter can be any combination of GPIO_Pin_x where x can be (0..15).
- * @retval the bit that's read
- */
-int OW_readBit(GPIO_TypeDef* ow_port, uint16_t ow_pin) {
-	GPIO_PinState pinState;
-
-	HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_RESET); // Drives DQ low
-	_DelayUS(DELAY_A);
-	HAL_GPIO_WritePin(ow_port, ow_pin, GPIO_PIN_SET); // Releases the bus
-	_DelayUS(DELAY_E);
-	pinState = HAL_GPIO_ReadPin(ow_port, ow_pin); // Sample the bit value from the slave
-	_DelayUS(DELAY_F); // Complete the time slot and 10us recovery
-
-	return pinState;
-}
-
-/**
- * @brief  Write 1-Wire data byte
- * @param  ow_port: GPIOx port, where x can be (A..G) to select the GPIO peripheral.
- * @param  ow_pin: specifies the port bits to be written.
- *   This parameter can be any combination of GPIO_Pin_x where x can be (0..15).
- * @param  data: data for writing.
- * @retval None
- */
-void OW_writeByte(GPIO_TypeDef* ow_port, uint16_t ow_pin, int data) {
-	int loop;
-
-	// Loop to write each bit in the byte, LS-bit first
-	for (loop = 0; loop < 8; loop++) {
-		OW_writeBit(ow_port, ow_pin, data & 0x01);
-
-		// shift the data byte for the next bit
-		data >>= 1;
-	}
-}
-
-/**
- * @brief  Read 1-Wire data byte and return it
- * @param  ow_port: GPIOx port, where x can be (A..G) to select the GPIO peripheral.
- * @param  ow_pin: specifies the port bits to be written.
- *   This parameter can be any combination of GPIO_Pin_x where x can be (0..15).
- * @retval the data that's read
- */
-int OW_readByte(GPIO_TypeDef* ow_port, uint16_t ow_pin) {
-	int loop, result = 0;
-
-	for (loop = 0; loop < 8; loop++) {
-		// shift the result to get it ready for the next bit
-		result >>= 1;
-
-		// if result is one, then set MS bit
-		if (OW_readBit(ow_port, ow_pin))
-			result |= 0x80;
-	}
-	return result;
 }
 
