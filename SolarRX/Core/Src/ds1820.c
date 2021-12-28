@@ -89,18 +89,20 @@ int16_t OW_ReadTemperature(TempSensor_t tempSensor) {
 
 	uint8_t pad_data[] = {0,0,0,0,0,0,0,0,0}; //9 Byte
 	reset(ow_port, ow_pin);
-	write_byte(0xCC, ow_port, ow_pin); //Skip ROM [CCh]
-	write_byte(0x44, ow_port, ow_pin); //Convert Temperature [44h]
+	write_byte(OW_CMD_SKIPROM, ow_port, ow_pin); //Skip ROM [0xCC]
+	write_byte(OW_CONVERT_TEMPERATURE, ow_port, ow_pin); //Convert Temperature [0x44]
 	PIN_wait_for_1(20, ow_port, ow_pin);
 	reset(ow_port, ow_pin);
-	write_byte(0xCC, ow_port, ow_pin); //Skip ROM [CCh]
-	write_byte(0xBE, ow_port, ow_pin); //Read Scratchpad [BEh]
+	write_byte(OW_CMD_SKIPROM, ow_port, ow_pin); //Skip ROM [0xCC]
+	write_byte(OW_READ_SCRATCHPAD, ow_port, ow_pin); //Read Scratchpad [0xBE]
 	for (uint8_t i = 0; i < 9; i++)
 		pad_data[i] = read_byte(ow_port, ow_pin); //factor out 1/16 and remember 1/16 != 1/16.0
 	uint16_t x = (pad_data[1] << 8) + pad_data[0];
 	if ((pad_data[1] >> 7) == 1 )
 	{
-		x -= 1; x = ~x; return x / -16.0;
+		x -= 1;
+		x = ~x;
+		return x / -16.0;
 	}
 	else
 	{
