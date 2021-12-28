@@ -61,7 +61,7 @@ static SSD1306_t SSD1306;
 // Print temperatures on LCD
 void SSD1306_PrintTemperatures(char *tBoiler, char *tWaterHeater, char *tCollector) {
 
-	SSD1306_Clear();
+	SSD1306_Fill(SSD1306_COLOR_BLACK);
 
 	// Kotao
 	SSD1306_GotoXY(92, 0);
