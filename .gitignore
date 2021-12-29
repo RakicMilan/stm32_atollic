@@ -6,6 +6,7 @@
 *.ko
 *.obj
 *.elf
+*.list
 
 # Linker output
 *.ilk
@@ -52,4 +53,3 @@ Mkfile.old
 dkms.conf
 
 .metadata
-/SolarRX/Debug/SolarRX.list
