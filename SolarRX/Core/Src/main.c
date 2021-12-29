@@ -20,64 +20,139 @@
 #include "main.h"
 
 /* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>
 #include "stm32f1xx_it.h"
-
 #include "gpio.h"
 #include "usart.h"
 #include "i2c.h"
+#include "spi.h"
 
 #include "fonts.h"
 #include "ssd1306.h"
-#include "test.h"
 #include "ds1820.h"
-/* USER CODE END Includes */
+#include "nrf24.h"
 
 /* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-/* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-/* USER CODE END PD */
+#define RX
+//#define TX
 
 /* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-/* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
 uint8_t m_displayCounter;
 
-SPI_HandleTypeDef hspi1;
-
-/* USER CODE BEGIN PV */
-/* USER CODE END PV */
+nrf24_t NRF24Ctx = {
+#ifdef RX
+		.RXAddress = {0xD7,0xD7,0xD7,0xD7,0xD7},
+		.TXAddress = {0xE7,0xE7,0xE7,0xE7,0xE7},
+#endif
+#ifdef TX
+		.RXAddress = {0xE7,0xE7,0xE7,0xE7,0xE7},
+		.TXAddress = {0xD7,0xD7,0xD7,0xD7,0xD7},
+#endif
+		.PayloadSize = 8,
+		.Channel = 2
+};
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 void UpdateDisplay(void);
-static void MX_SPI1_Init(void);
-/* USER CODE BEGIN PFP */
-
-/* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
 void sendDebug(char* format,...)
 {
-	char sendBuf[128];
-	va_list args;
-	/* initialize valist for num number of arguments */
-	va_start(args, format);
-	vsnprintf(sendBuf,sizeof(sendBuf) - 1, format, args);
-	/* clean memory reserved for valist */
-	va_end(args);
-	USARTWriteBuffer(USART2,(uint8_t*)sendBuf,strlen(sendBuf));
+  char sendBuf[128];
+  va_list args;
+  /* initialize valist for num number of arguments */
+  va_start(args, format);
+  vsnprintf(sendBuf,sizeof(sendBuf) - 1, format, args);
+  /* clean memory reserved for valist */
+  va_end(args);
+  USARTWriteBuffer(USART2,(uint8_t*)sendBuf,strlen(sendBuf));
 }
-/* USER CODE END 0 */
+
+void nRF24_DumpConfig(void) {
+  uint8_t i, j;
+  uint8_t aw;
+
+  // Dump nRF24L01+ configuration
+  // CONFIG
+  NRF24ReadRegister(0x00,&i,1);
+  DEBUG("[0x%02X] 0x%02X MASK:0x%02X CRC:0x%02X PWR:%s MODE:P%s\r\n", 0x00, i,
+          i >> 4, (i & 0x0c) >> 2, (i & 0x02) ? "ON" : "OFF",
+          (i & 0x01) ? "RX" : "TX");
+  // EN_AA
+  NRF24ReadRegister(0x01,&i,1);
+  DEBUG("[0x%02X] 0x%02X ENAA: ", 0x01, i);
+  for (j = 0; j < 6; j++) {
+      DEBUG("[P%1u%s]%s", j, (i & (1 << j)) ? "+" : "-",
+              (j == 5) ? "\r\n" : " ");
+  }
+  // EN_RXADDR
+  NRF24ReadRegister(0x02,&i,1);
+  DEBUG("[0x%02X] 0x%02X EN_RXADDR: ", 0x02, i);
+  for (j = 0; j < 6; j++) {
+      DEBUG("[P%1u%s]%s", j, (i & (1 << j)) ? "+" : "-",
+              (j == 5) ? "\r\n" : " ");
+  }
+  // SETUP_AW
+  NRF24ReadRegister(0x03,&i,1);
+  aw = (i & 0x03) + 2;
+  DEBUG("[0x%02X] 0x%02X EN_RXADDR=0x%02X (address width = %d)\r\n", 0x03, i,
+          i & 0x03, aw);
+  // SETUP_RETR
+  NRF24ReadRegister(0x04,&i,1);
+  DEBUG("[0x%02X] 0x%02X ARD=0x%02X ARC=0x%02X (retr.delay=%d[us], count=%d)\r\n",
+          0x04, i, i >> 4, i & 0x0F, ((i >> 4) * 250) + 250, i & 0x0F);
+  // RF_CH
+  NRF24ReadRegister(0x05,&i,1);
+  DEBUG("[0x%02X] 0x%02X %d[GHz]\r\n", 0x05, i, 2400 + i);
+  // RF_SETUP
+  NRF24ReadRegister(0x06,&i,1);
+  DEBUG("[0x%02X] 0x%02X CONT_WAVE:%s PLL_LOCK:%s DataRate=", 0x06, i,
+          (i & 0x80) ? "ON" : "OFF", (i & 0x80) ? "ON" : "OFF");
+  switch ((i & 0x28) >> 3) {
+  case 0x00:
+      DEBUG("1M");
+      break;
+  case 0x01:
+      DEBUG("2M");
+      break;
+  case 0x04:
+      DEBUG("250k");
+      break;
+  default:
+      DEBUG("???");
+      break;
+  }
+  DEBUG("pbs RF_PWR=");
+  switch ((i & 0x06) >> 1) {
+  case 0x00:
+      DEBUG("-18");
+      break;
+  case 0x01:
+      DEBUG("-12");
+      break;
+  case 0x02:
+      DEBUG("-6");
+      break;
+  case 0x03:
+      DEBUG("0");
+      break;
+  default:
+      DEBUG("???");
+      break;
+  }
+  DEBUG("dBm\r\n");
+  // STATUS
+  NRF24ReadRegister(0x07,&i,1);
+  DEBUG("[0x%02X] 0x%02X IRQ:0x%02X RX_PIPE:%d TX_FULL:%s\r\n", 0x07, i,
+          (i & 0x70) >> 4, (i & 0x0E) >> 1, (i & 0x01) ? "YES" : "NO");
+}
 
 /**
   * @brief  The application entry point.
@@ -85,72 +160,61 @@ void sendDebug(char* format,...)
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-
-  /* USER CODE END 1 */
-
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
   HAL_Init();
 
-  /* USER CODE BEGIN Init */
-
-  /* USER CODE END Init */
-
   /* Configure the system clock */
   SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
-
-  /* USER CODE END SysInit */
-
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_USART2_UART_Init();
   MX_I2C1_Init();
   MX_I2C2_Init();
-
 #ifdef USE_SPI1
   MX_SPI1_Init();
 #else
   MX_SPI2_Init();
 #endif
-
-  MX_USART2_UART_Init();
-
   DS1820_Init();
-
-  /* USER CODE BEGIN 2 */
   SSD1306_Init();
+
+  DEBUG("NRF24L01 start!\r\n");
+  /* Set the device addresses */
+  NRF24Init();
+
+  // ---TEST--- //
+  //nRF24_DumpConfig();
+
+  NRF24Config(&NRF24Ctx);
+
+  NRF24SetRxAddress(&NRF24Ctx);
+  NRF24SetTxAddress(&NRF24Ctx);
 
   SSD1306_GotoXY(0, 0);
   SSD1306_Puts("HELLO", &Font_11x18, 1);
   SSD1306_GotoXY(10, 30);
   SSD1306_Puts("  WORLD :)", &Font_11x18, 1);
   SSD1306_UpdateScreen();
-  //HAL_Delay(2000);
-  /* USER CODE END 2 */
-
-
-
-
-//  GPIO_InitTypeDef GPIO_InitStruct;
-//  GPIO_InitStruct.Pin = GPIO_PIN_9;
-//  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-//  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-//  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
 
   /* Infinite loop */
   while (1)
   {
-
-
-//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_SET);
-//	  _DelayUS(10);
-//	  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_9, GPIO_PIN_RESET);
-//	  _DelayUS(100);
-
+#if defined RX
+    if(NRF24DataReady())
+    {
+      HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+      NRF24GetData(&NRF24Ctx);
+      DEBUG("Received data:\r\n");
+      for(uint8_t i = 0; i < NRF24Ctx.PayloadSize; i++)
+      {
+          DEBUG("%2X ",NRF24Ctx.RXData[i]);
+      }
+      DEBUG("\r\n");
+    }
+#endif
 
 	/*Task 10ms*/
     if(Task10ms)
@@ -169,13 +233,37 @@ int main(void)
     if(Task1s)
     {
       Task1s = false;
+#if defined TX
+      /* Prepare data for sending */
+      memset(NRF24Ctx.TXData, 0, sizeof(NRF24Ctx.TXData));
+      for(uint8_t i = 0; i < NRF24Ctx.PayloadSize; i++)
+      {
+          NRF24Ctx.TXData[i] = i;
+      }
+      /* Automatically goes to TX mode */
+      NRF24Send(&NRF24Ctx);
+
+      /* Wait for transmission to end */
+      while(NRF24IsSending());
+
+      /* Make analysis on last tranmission attempt */
+      uint8_t sendStatus = NRF24LastMessageStatus();
+
+      if(sendStatus == NRF24_TRANSMISSON_OK)
+      {
+          DEBUG("Transmition OK!\r\n");
+          HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+      }
+      else if(sendStatus == NRF24_MESSAGE_LOST)
+      {
+          DEBUG("Transmition ERROR!\r\n");
+      }
+      /* Retranmission count indicates the tranmission quality */
+      sendStatus = NRF24RetransmissionCount();
+      DEBUG("Retransmition count: %u!\r\n",sendStatus);
+#endif
 
       UpdateDisplay();
-
-//      SSD1306_ScrollRight(0x00, 0x0f);
-//      DEBUG("Test\r\n");
-//      SSD1306_ScrollLeft(0x00, 0x0f);
-//      DEBUG("Test\r\n");
     }
   }
 }
@@ -216,50 +304,16 @@ void SystemClock_Config(void)
   {
     _Error_Handler(__FILE__, __LINE__);
   }
+
+  /* Configure the Systick interrupt time */
+  HAL_SYSTICK_Config(HAL_RCC_GetHCLKFreq()/1000);
+
+  /* Configure the Systick */
+  HAL_SYSTICK_CLKSourceConfig(SYSTICK_CLKSOURCE_HCLK);
+
+  /* SysTick_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
-
-void UpdateDisplay(void) {
-//	if (m_displayCounter < 3) {
-//		DisplayTime();
-//	} else {
-		DisplayTemperatures();
-//	}
-	m_displayCounter++;
-	if (m_displayCounter >= 6)
-		m_displayCounter = 0;
-}
-
-/**
-  * @brief SPI1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_SPI1_Init(void)
-{
-
-  /* SPI1 parameter configuration*/
-  hspi1.Instance = SPI1;
-  hspi1.Init.Mode = SPI_MODE_MASTER;
-  hspi1.Init.Direction = SPI_DIRECTION_2LINES;
-  hspi1.Init.DataSize = SPI_DATASIZE_8BIT;
-  hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
-  hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
-  hspi1.Init.NSS = SPI_NSS_HARD_OUTPUT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_32;
-  hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
-  hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
-  hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
-  hspi1.Init.CRCPolynomial = 10;
-  if (HAL_SPI_Init(&hspi1) != HAL_OK)
-  {
-    _Error_Handler(__FILE__, __LINE__);
-  }
-
-}
-
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
 
 /**
   * @brief  This function is executed in case of error occurrence.
@@ -276,6 +330,17 @@ void _Error_Handler(char *file, int line)
   {
   }
   /* USER CODE END Error_Handler_Debug */
+}
+
+void UpdateDisplay(void) {
+//	if (m_displayCounter < 3) {
+//		DisplayTime();
+//	} else {
+		DisplayTemperatures();
+//	}
+	m_displayCounter++;
+	if (m_displayCounter >= 6)
+		m_displayCounter = 0;
 }
 
 #ifdef  USE_FULL_ASSERT
